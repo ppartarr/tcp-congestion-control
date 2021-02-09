@@ -1,0 +1,49 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+#    AN2018: Lab1 Task2:
+#    Author: Ralph Koning
+#
+#    Network topology:
+#
+#    +--------+eth1      eth1+------+
+#    | source |--------------| sink |
+#    +--------+              --------
+
+Vagrant.configure(2) do |config|
+  config.ssh.shell = "bash -c 'BASH_ENV=/etc/profile exec bash'"
+
+  config.vm.define "source" do |subconfig|
+    subconfig.vm.box = "ns327"
+    subconfig.vm.network :private_network, ip: "192.168.99.11", auto_config:false
+    subconfig.vm.provision "shell", inline: <<-SHELL
+	sudo ip addr add 192.168.99.11/24 dev eth1
+	sudo ip link set dev eth1 up
+        sudo echo "127.0.6.1 source.vm source" >> /etc/hosts
+        sudo echo "192.168.99.12 sink.vm sink" >> /etc/hosts
+	sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y iperf
+    	sudo hostname "source"	
+	sudo ip route flush table cache
+	sudo sysctl -w net.ipv4.tcp_no_metrics_save=1
+    SHELL
+  end
+
+  config.vm.define "sink" do |subconfig|
+    subconfig.vm.box = "ns327"
+    subconfig.vm.provision "shell", inline: <<-SHELL
+    	sudo hostname sink	
+    SHELL
+    subconfig.vm.network :private_network, ip: "192.168.99.12", auto_config: false
+    subconfig.vm.provision "shell", inline: <<-SHELL
+	sudo ip addr add 192.168.99.12/24 dev eth1
+	sudo ip link set dev eth1 up
+        sudo echo "127.0.6.1 sink.vm sink" >> /etc/hosts
+        sudo echo "192.168.99.11 source.vm source" >> /etc/hosts
+	sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y iperf
+    	sudo hostname "sink"
+	sudo ip route flush table cache
+	sudo sysctl -w net.ipv4.tcp_no_metrics_save=1
+    SHELL
+
+  end
+end
